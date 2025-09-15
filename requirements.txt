@@ -1,2 +1,4 @@
 fastmcp
 redis
+numpy
+openai
