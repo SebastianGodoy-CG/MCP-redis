@@ -4,6 +4,9 @@ import os
 import json
 import numpy as np
 from openai import AzureOpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
 
 r = redis.Redis(
     host=os.getenv("REDIS_HOST"),
@@ -72,4 +75,4 @@ def semantic_search(query: str, top_k: int = 1) -> dict | None:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="http", host="127.0.0.1", port=8000)
