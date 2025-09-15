@@ -2,3 +2,5 @@ fastmcp
 redis
 numpy
 openai
+fastapi
+uvicorn[standard]

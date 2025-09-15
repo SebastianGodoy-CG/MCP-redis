@@ -5,7 +5,7 @@ import json
 import numpy as np
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-#from fastmcp.server.middleware import corsmiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -35,6 +35,14 @@ client = AzureOpenAI(
 )
 
 app = mcp.http_app()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
