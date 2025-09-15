@@ -5,6 +5,8 @@ import json
 import numpy as np
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+#from fastmcp.server.middleware import corsmiddleware
+
 load_dotenv()
 
 r = redis.StrictRedis(
@@ -25,11 +27,14 @@ except Exception as e:
 
 mcp = FastMCP("redis_mcp", version="1.0.0")
 
+
 client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
     api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
 )
+
+app = mcp.http_app()
 
 EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
@@ -53,11 +58,12 @@ def cosine_similarity(a, b) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 @mcp.tool()
-def semantic_search(query: str, top_k: int = 1) -> dict:
+def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict | None:
     """
     Busca en Redis la respuesta más similar a la pregunta usando embeddings de Azure OpenAI.
+    Solo devuelve resultados si el score >= threshold.
+    Si no hay coincidencias relevantes, devuelve None para que el agente consulte al LLM.
     """
-    print(f"Buscando en Redis la respuesta más similar a: {query}")
     q_emb = embed_text(query)
     keys = r.keys("semantic:*")
 
@@ -72,36 +78,29 @@ def semantic_search(query: str, top_k: int = 1) -> dict:
             continue
 
         score = cosine_similarity(q_emb, doc["embedding"])
-        best_matches.append({
-            "key": key,
-            "text": doc["text"],
-            "response": doc["response"],
-            "score": score
-        })
+        if score >= threshold:  # 🔑 solo guardamos si pasa el umbral
+            best_matches.append({
+                "key": key.decode("utf-8") if isinstance(key, bytes) else key,
+                "text": doc.get("text", ""),
+                "response": doc["response"],
+                "score": score
+            })
 
     if not best_matches:
-        return {
-            "content": [
-                {"type": "text", "text": "No se encontró ninguna respuesta en cache."}
-            ]
-        }
+        # 🚨 Devolver None para que el agente siga con el LLM
+        return None
 
-    # Ordenar por score
+    # Ordenar por score y devolver top_k
     best_matches.sort(key=lambda x: x["score"], reverse=True)
     top_results = best_matches[:top_k]
-
-    # Tomamos la mejor respuesta como texto principal
     main_response = top_results[0]["response"]
 
-    print("Devolviendo respuesta")
     return {
         "content": [
             {"type": "text", "text": main_response},
-            {"type": "json", "json": top_results}  # Adjuntamos metadata completa
+            {"type": "json", "json": top_results}
         ]
     }
-
-
-
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8000)
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
