@@ -86,7 +86,7 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
             continue
 
         score = cosine_similarity(q_emb, doc["embedding"])
-        if score >= threshold:  # 🔑 solo guardamos si pasa el umbral
+        if score >= threshold:  # solo guardamos si pasa el umbral
             best_matches.append({
                 "key": key.decode("utf-8") if isinstance(key, bytes) else key,
                 "text": doc.get("text", ""),
@@ -95,20 +95,23 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
             })
 
     if not best_matches:
-        # 🚨 Devolver None para que el agente siga con el LLM
+        # Devolver None para que el agente continúe con el LLM
         return None
 
     # Ordenar por score y devolver top_k
     best_matches.sort(key=lambda x: x["score"], reverse=True)
     top_results = best_matches[:top_k]
-    main_response = top_results[0]["response"]
+    main_response = top_results[0]["response"]  # texto plano
+    print(main_response)
 
+    # Retornar en el formato esperado por Foundry
     return {
         "content": [
-            {"type": "text", "text": main_response},
-            {"type": "json", "json": top_results}
+            {"type": "text", "text": main_response}#,  # texto plano
+            #{"type": "json", "json": top_results}     # metadata completa
         ]
     }
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=80, reload=False)
