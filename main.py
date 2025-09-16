@@ -115,7 +115,7 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
     # Retornar en el formato esperado por Foundry
     return {
     "content": [
-        {"type": "text", "text": "respuesta de prueba"}
+        {"type": "text", "text": main_response}
     ]
     }
 
