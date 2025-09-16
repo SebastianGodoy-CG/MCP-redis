@@ -102,7 +102,7 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
     best_matches.sort(key=lambda x: x["score"], reverse=True)
     top_results = best_matches[:top_k]
     main_response = top_results[0]["response"]  # texto plano
-    print(main_response)
+    print(f"Enviando respuesta desde cache semantico: {main_response}")
 
     # Retornar en el formato esperado por Foundry
     return {
