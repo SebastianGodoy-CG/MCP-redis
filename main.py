@@ -65,6 +65,12 @@ def cosine_similarity(a, b) -> float:
     a, b = np.array(a), np.array(b)
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
+def fix_encoding(text: str) -> str:
+    try:
+        return text.encode("latin-1").decode("utf-8")
+    except Exception:
+        return text
+
 @mcp.tool()
 def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict | None:
     """
@@ -72,6 +78,9 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
     Solo devuelve resultados si el score >= threshold.
     Si no hay coincidencias relevantes, devuelve None para que el agente consulte al LLM.
     """
+    print(f"Query recibido: {query}")
+    query = fix_encoding(query)
+    print(f"Query corregido: {query}")
     q_emb = embed_text(query)
     keys = r.keys("semantic:*")
 
@@ -102,14 +111,12 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
     best_matches.sort(key=lambda x: x["score"], reverse=True)
     top_results = best_matches[:top_k]
     main_response = top_results[0]["response"]  # texto plano
-    print(f"Enviando respuesta desde cache semantico: {main_response}")
 
     # Retornar en el formato esperado por Foundry
     return {
-        "content": [
-            {"type": "text", "text": main_response}#,  # texto plano
-            #{"type": "json", "json": top_results}     # metadata completa
-        ]
+    "content": [
+        {"type": "text", "text": main_response}
+    ]
     }
 
 if __name__ == "__main__":
