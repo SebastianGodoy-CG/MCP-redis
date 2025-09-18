@@ -95,7 +95,6 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
             continue
 
         score = cosine_similarity(q_emb, doc["embedding"])
-        print(f"Score de respuesta: {score}")
         if score >= threshold:  # solo guardamos si pasa el umbral
             best_matches.append({
                 "key": key.decode("utf-8") if isinstance(key, bytes) else key,
@@ -112,6 +111,7 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
     best_matches.sort(key=lambda x: x["score"], reverse=True)
     top_results = best_matches[:top_k]
     main_response = top_results[0]["response"]  # texto plano
+    print(f"Mejor respuesta encontrada: {main_response} con score {top_results[0]['score']}")
 
     # Retornar en el formato esperado por Foundry
     return {
