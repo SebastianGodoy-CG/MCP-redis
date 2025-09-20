@@ -11,22 +11,24 @@ load_dotenv()
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
+# Redis client
 r = redis.StrictRedis(
     host=os.getenv("REDIS_HOST"),
     port=os.getenv("REDIS_PORT"),
     password=os.getenv("REDIS_PWD"),
     ssl=True,
-    db=os.getenv("REDIS_DB", 0),
+    db=int(os.getenv("REDIS_DB", 0)),
     socket_timeout=3,
-    socket_connect_timeout=3)
+    socket_connect_timeout=3
+)
 
-    # Prueba de conexión a Redis
 try:
     r.ping()
-    print("Conexión a Redis exitosa")
+    logging.info("Conexión a Redis exitosa")
 except Exception as e:
-    print(f"Error de conexión a Redis: {e}")
+    logging.error(f"Error de conexión a Redis: {e}")
 
+# Azure OpenAI client
 client = AzureOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -36,10 +38,7 @@ client = AzureOpenAI(
 EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
 def embed_text(text: str) -> list[float]:
-    """
-    Genera embedding de un texto con Azure OpenAI.
-    """
-    logging.info("generando embedding")
+    logging.info("Generando embedding...")
     resp = client.embeddings.create(
         model=EMBEDDING_DEPLOYMENT,
         input=text
@@ -47,10 +46,6 @@ def embed_text(text: str) -> list[float]:
     return resp.data[0].embedding
 
 def cosine_similarity(a, b) -> float:
-    """
-    Calcula similitud coseno entre dos vectores.
-    """
-    logging.info("calculando similitud coseno")
     a, b = np.array(a), np.array(b)
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
@@ -59,22 +54,33 @@ def fix_encoding(text: str) -> str:
         return text.encode("latin-1").decode("utf-8")
     except Exception:
         return text
-    
 
-@app.route(route="semantic_search")
-def semantic_search(req:func.HttpRequest) -> func.HttpResponse:
-    """
-    Busca en Redis la respuesta más similar a la pregunta usando embeddings de Azure OpenAI.
-    Solo devuelve resultados si el score >= threshold.
-    Si no hay coincidencias relevantes, devuelve None para que el agente consulte al LLM.
-    """
-    data = req.get_json()
+# --- La función HTTP ---
+#@app.function_name(name="semantic_search")
+@app.route(route="semantic_search", methods=["POST"])
+def semantic_search(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        data = req.get_json()
+    except ValueError:
+        return func.HttpResponse(
+            json.dumps({"error": "Invalid or missing JSON body"}),
+            mimetype="application/json",
+            status_code=400
+        )
+
     query = data.get("query", "")
     threshold = float(data.get("threshold", 0.80))
     top_k = int(data.get("top_k", 1))
+
+    if not query:
+        return func.HttpResponse(
+            json.dumps({"error": "Missing 'query' field"}),
+            mimetype="application/json",
+            status_code=400
+        )
+
     logging.info(f"Query recibido: {query}")
     query = fix_encoding(query)
-    logging.info(f"Query corregido: {query}")
     q_emb = embed_text(query)
     keys = r.keys("semantic:*")
 
@@ -89,7 +95,7 @@ def semantic_search(req:func.HttpRequest) -> func.HttpResponse:
             continue
 
         score = cosine_similarity(q_emb, doc["embedding"])
-        if score >= threshold:  # solo guardamos si pasa el umbral
+        if score >= threshold:
             best_matches.append({
                 "key": key.decode("utf-8") if isinstance(key, bytes) else key,
                 "text": doc.get("text", ""),
@@ -104,15 +110,16 @@ def semantic_search(req:func.HttpRequest) -> func.HttpResponse:
             status_code=200
         )
 
-    # Ordenar por score y devolver top_k
     best_matches.sort(key=lambda x: x["score"], reverse=True)
     top_results = best_matches[:top_k]
-    main_response = top_results[0]["response"]  # texto plano
-    logging.info(f"Mejor respuesta encontrada: {main_response} con score {top_results[0]['score']}")
+    main_response = top_results[0]["response"]
 
-    # Retornar en el formato esperado por Foundry
-    return func.HttpResponse(json.dumps({
-    "content": [
-        {"type": "text", "text": main_response}
-    ]
-    }))
+    logging.info(f"Mejor respuesta encontrada: {main_response}")
+
+    return func.HttpResponse(
+        json.dumps({
+            "content": [{"type": "text", "text": main_response}]
+        }),
+        mimetype="application/json",
+        status_code=200
+    )
