@@ -62,7 +62,7 @@ def fix_encoding(text: str) -> str:
     
 
 @app.route(route="semantic_search")
-def semantic_search(req:func.HttpRequest) -> dict | None:
+def semantic_search(req:func.HttpRequest) -> func.HttpResponse:
     """
     Busca en Redis la respuesta más similar a la pregunta usando embeddings de Azure OpenAI.
     Solo devuelve resultados si el score >= threshold.
@@ -98,8 +98,11 @@ def semantic_search(req:func.HttpRequest) -> dict | None:
             })
 
     if not best_matches:
-        # Devolver None para que el agente continúe con el LLM
-        return None
+        return func.HttpResponse(
+            json.dumps({"content": []}),
+            mimetype="application/json",
+            status_code=200
+        )
 
     # Ordenar por score y devolver top_k
     best_matches.sort(key=lambda x: x["score"], reverse=True)
