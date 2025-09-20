@@ -1,0 +1,25 @@
+{
+  "version": "2.0",
+  "extensions": {
+    "mcp": {
+      "instructions": "Servidor MCP para realizar busqueda semantica en redis",
+      "serverName": "redis_mcp",
+      "serverVersion": "2.0.0",
+      "messageOptions": {
+        "useAbsoluteUriForEndpoint": false
+      }
+    }    
+  },
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle.Preview",
+    "version": "[4.0.0, 5.0.0)"
+  }
+}

@@ -1,6 +1,5 @@
-fastmcp
+azure-functions
 redis
 numpy
 openai
-fastapi
-uvicorn[standard]
+python-dotenv
