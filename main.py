@@ -119,7 +119,3 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
         {"type": "text", "text": main_response}
     ]
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=80, reload=False)
