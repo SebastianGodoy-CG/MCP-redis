@@ -1,4 +1,4 @@
-fastmcp
+mcp[cli]
 redis
 numpy
 openai

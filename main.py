@@ -1,4 +1,4 @@
-from fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP
 import redis
 import os
 import json
@@ -24,8 +24,8 @@ try:
 except Exception as e:
     print(f"Error de conexión a Redis: {e}")
 
-mcp_port = int(os.getenv("MCP_PORT", 8080))
-mcp = FastMCP("redis_mcp", stateless_http=True, port=mcp_port, host="0.0.0.0")
+mcp_port = int(os.environ.get("FUNCTIONS_CUSTOMHANDLER_PORT", 8080))
+mcp = FastMCP("redis_mcp", stateless_http=True, port=mcp_port)
 
 
 client = AzureOpenAI(
@@ -114,7 +114,7 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
 if __name__ == "__main__":
     try:
         # Initialize and run the server
-        print("Starting MCP server...")
+        print(f"Starting MCP server on port")
         mcp.run(transport="streamable-http")
     except Exception as e:
         print(f"Error while running MCP server: {e}")
