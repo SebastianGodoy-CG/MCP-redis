@@ -24,7 +24,7 @@ try:
 except Exception as e:
     print(f"Error de conexión a Redis: {e}")
 
-mcp_port = int(os.environ.get("FUNCTIONS_CUSTOMHANDLER_PORT", 8080))
+mcp_port = int(os.environ.get("FUNCTIONS_CUSTOMHANDLER_PORT"))
 mcp = FastMCP("redis_mcp", stateless_http=True, port=mcp_port)
 
 
@@ -114,7 +114,7 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
 if __name__ == "__main__":
     try:
         # Initialize and run the server
-        print(f"Starting MCP server on port")
+        print(f"Starting MCP server on port {mcp_port}")
         mcp.run(transport="streamable-http")
     except Exception as e:
         print(f"Error while running MCP server: {e}")
