@@ -5,7 +5,6 @@ import json
 import numpy as np
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -25,7 +24,8 @@ try:
 except Exception as e:
     print(f"Error de conexión a Redis: {e}")
 
-mcp = FastMCP("redis_mcp", version="1.0.0")
+mcp_port = int(os.getenv("MCP_PORT", 8080))
+mcp = FastMCP("redis_mcp", stateless_http=True, port=mcp_port, host="0.0.0.0")
 
 
 client = AzureOpenAI(
@@ -34,15 +34,6 @@ client = AzureOpenAI(
     api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
 )
 
-app = mcp.http_app()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
@@ -121,5 +112,9 @@ def semantic_search(query: str, top_k: int = 1, threshold: float = 0.80) -> dict
     }
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=80, reload=False)
+    try:
+        # Initialize and run the server
+        print("Starting MCP server...")
+        mcp.run(transport="streamable-http")
+    except Exception as e:
+        print(f"Error while running MCP server: {e}")
