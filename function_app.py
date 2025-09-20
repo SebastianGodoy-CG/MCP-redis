@@ -62,15 +62,19 @@ def fix_encoding(text: str) -> str:
     
 
 @app.route(route="semantic_search")
-def semantic_search(req:func.HttpRequest, query: str, top_k: int = 1, threshold: float = 0.80) -> dict | None:
+def semantic_search(req:func.HttpRequest) -> dict | None:
     """
     Busca en Redis la respuesta más similar a la pregunta usando embeddings de Azure OpenAI.
     Solo devuelve resultados si el score >= threshold.
     Si no hay coincidencias relevantes, devuelve None para que el agente consulte al LLM.
     """
-    print(f"Query recibido: {query}")
+    data = req.get_json()
+    query = data.get("query", "")
+    threshold = float(data.get("threshold", 0.80))
+    top_k = int(data.get("top_k", 1))
+    logging.info(f"Query recibido: {query}")
     query = fix_encoding(query)
-    print(f"Query corregido: {query}")
+    logging.info(f"Query corregido: {query}")
     q_emb = embed_text(query)
     keys = r.keys("semantic:*")
 
